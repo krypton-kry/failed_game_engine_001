@@ -133,7 +133,7 @@ union mat4x4
 
 MOE_API mat4x4 m4_make_orthographic_projection(f32 left, f32 right, f32 bottom, f32 top, f32 _near, f32 _far);
 MOE_API mat4x4 m4_scalar(f32 scalar);
-
+MOE_API vec2 v2_add(vec2 a, vec2 b);
 /*
  * =======================================================
  *						CODEBASE
@@ -256,6 +256,7 @@ struct moe_input {
 MOE_API void moe_handle_mouse_motion(f32 x, f32 y);
 MOE_API void moe_handle_window_resize(f32 width, f32 height);
 MOE_API void moe_handle_inputs(moe_input_key key, u8 is_down);
+MOE_API u8 is_down(moe_input_key key);
 
 /*
  * =======================================================
@@ -322,9 +323,9 @@ struct moe_frame {
 MOE_API void moe_render_update();
 MOE_API void moe_reset_frame(moe_frame *frame);
 
-MOE_API void moe_draw_quad(u32 shader, vec2 size, vec4 color);
-MOE_API void moe_draw_rect(vec2 size, vec4 color);
-MOE_API void moe_draw_image(u32 texture, vec2 size);
+MOE_API void moe_draw_quad(u32 shader, vec2 size, vec2 pos, vec4 color);
+MOE_API void moe_draw_rect(vec2 size, vec2 pos, vec4 color);
+MOE_API void moe_draw_image(u32 texture, vec2 size, vec2 pos);
 
 /*
  * =======================================================

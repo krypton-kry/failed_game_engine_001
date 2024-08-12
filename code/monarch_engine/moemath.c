@@ -22,3 +22,7 @@ mat4x4 m4_make_orthographic_projection(f32 left, f32 right, f32 bottom, f32 top,
   
   return m;
 }
+
+vec2 v2_add(vec2 a, vec2 b){
+  return V2(a.x+b.x, a.y+b.y);
+}
