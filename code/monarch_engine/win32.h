@@ -254,7 +254,7 @@ void moe_os_show_window(moe_context* ctx)
 void moe_os_handle_messages()
 {
   MSG msg;
-  if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+  while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
     if (msg.message == WM_QUIT) ExitProcess(0);
     TranslateMessage(&msg);
     DispatchMessage(&msg);

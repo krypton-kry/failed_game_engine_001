@@ -134,6 +134,11 @@ union mat4x4
 MOE_API mat4x4 m4_make_orthographic_projection(f32 left, f32 right, f32 bottom, f32 top, f32 _near, f32 _far);
 MOE_API mat4x4 m4_scalar(f32 scalar);
 MOE_API vec2 v2_add(vec2 a, vec2 b);
+MOE_API f32 v2_length(vec2 v);
+MOE_API vec2 v2_mulf(vec2 v, f32 f);
+MOE_API vec2 v2_divf(vec2 v, f32 f);
+MOE_API vec2 v2_normalize(vec2 v);
+
 /*
  * =======================================================
  *						CODEBASE

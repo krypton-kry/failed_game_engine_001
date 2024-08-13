@@ -26,3 +26,21 @@ mat4x4 m4_make_orthographic_projection(f32 left, f32 right, f32 bottom, f32 top,
 vec2 v2_add(vec2 a, vec2 b){
   return V2(a.x+b.x, a.y+b.y);
 }
+
+f32 v2_length(vec2 v){
+  return sqrt((v.x * v.x) + (v.y * v.y));
+}
+
+vec2 v2_mulf(vec2 v, f32 f){
+  return V2(v.x*f, v.y*f);
+}
+
+vec2 v2_divf(vec2 v, f32 f){
+  return V2(v.x/f, v.y/f);
+}
+
+vec2 v2_normalize(vec2 v){
+  f32 length = v2_length(v);
+  if(length == 0) return V2(0, 0);
+  return v2_divf(v, length);
+}

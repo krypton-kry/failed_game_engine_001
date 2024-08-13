@@ -7,7 +7,8 @@ static void moe_init_engine() {
   IMAGE_SHADER = moe_compile_shader(&ctx.arena, str_lit("image.vert"), str_lit("image.frag"));
 }
 
-// TODO (krypton) : 
+// TODO (krypton) :
+// Handle Multiple keys
 // text rendering
 // audio
 // Do cleanup at end instead of just destoying the window?
@@ -21,7 +22,8 @@ int main(void)
   f64 last_time = moe_os_time();
   f64 seconds_counter = 0.0;
   i32 frame_count = 0;
-  f32 x = 0, y = 0, speed = 0.5; 
+  f32 speed = 1.5f;
+  vec2 player_pos = V2(0,0);
   
   for (;;)
   {
@@ -32,24 +34,38 @@ int main(void)
     moe_os_handle_messages();
     moe_render_update();
     
-    //FIXME : Diagonal Movement is not possible
+    //FIXME : Diagonal Movement is seperate?
+    vec2 input = V2(0,0);
     if(is_down('W')){
-      y += speed * delta_t;
+      input.y += 1.0f;
     } else if(is_down('A')){
-      x -= speed * delta_t;
+      input.x -= 1.0f;
     } else if(is_down('S')){
-      y -= speed * delta_t;
+      input.y -= 1.0f;
     } else if(is_down('D')){
-      x += speed * delta_t;
+      input.x += 1.0f;
     }
 
-    moe_draw_image(tex, V2(0.13, .16), V2(x, y));
-    moe_draw_rect(V2(0.13, 0.616), V2(0, 0), COLOR_RED);
-    moe_draw_rect(V2(0.73, 0.216), V2(0, 0), COLOR_RED);
-    moe_draw_rect(V2(0.63, 0.126), V2(0, 0), COLOR_RED);
-    moe_draw_rect(V2(0.43, 0.16), V2(0, 0), COLOR_RED);
-    moe_draw_rect(V2(0.13, 0.146), V2(0, 0), COLOR_RED);
-    moe_draw_rect(V2(0.13, 0.16), V2(0, 0), COLOR_RED);
+    if(is_down('W') && is_down('D')){
+      input.y += 1.0f;
+      input.x += 1.0f;
+    }
+    if(is_down('W') && is_down('S')){
+      input.y -= 1.0f;
+      input.x += 1.0f;
+    }
+    if(is_down('A') && is_down('S')){
+      input.y -= 1.0f;
+      input.x -= 1.0f;
+    }
+    if(is_down('S') && is_down('D')){
+      input.y -= 1.0f;
+      input.x += 1.0f;
+    }
+    input = v2_normalize(input);
+    player_pos = v2_add(player_pos, v2_mulf(input, speed * delta_t));
+    moe_draw_image(tex, V2(0.13, 0.16), player_pos);
+    moe_draw_rect(V2(0.5, 0.5), V2(-0.25, -0.25), COLOR_RED);
 
     moe_os_swap_buffers(&ctx);
     
