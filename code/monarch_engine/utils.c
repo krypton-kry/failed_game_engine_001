@@ -8,7 +8,8 @@ vec4 hex_to_rgba(u64 hex){
 }
 
 moe_image moe_load_image(moe_string path){
-  stbi_set_flip_vertically_on_load(1);
+  // NOTE(krypton) : if you flip this turn the texture to negative
+  //stbi_set_flip_vertically_on_load(1);
   int width, height, channels;
   u8* data = stbi_load(path.str, &width, &height, &channels, 4);
 

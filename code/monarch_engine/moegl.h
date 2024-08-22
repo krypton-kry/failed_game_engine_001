@@ -1245,8 +1245,13 @@ GL(glGetActiveUniform, void, (GLuint program, GLuint index, GLsizei bufSize, GLs
 GL(glVertexAttribDivisor, void, (GLuint index, GLuint divisor))\
 GL(glDrawArraysInstanced, void, (GLenum mode, GLint first, GLsizei count, GLsizei instacecount))\
 GL(glUniform3fv, void, (GLint location,GLsizei count,const GLfloat *value))\
+GL(glUniform2fv, void, (GLint location,GLsizei count,const GLfloat *value))\
+GL(glUniform4fv, void, (GLint location,GLsizei count,const GLfloat *value))\
 GL(glUniform3f, void, (GLint location,GLfloat v0, GLfloat v1, GLfloat v2))\
 GL(glTexBuffer, void, (GLenum target,GLenum internalformat,GLuint buffer))\
+GL(glGetAttribLocation, GLint, (GLuint program, const GLchar *name))\
+GL(glBindAttribLocation, void, (GLuint program, GLuint index, const GLchar *name))\
+GL(glBindFragDataLocation, void, (GLuint program, GLuint colorNumber, const char * name))\
 GL(glVertexAttribIPointer, void, (GLuint index,GLint size,GLenum type,GLsizei stride,const void * pointer))\
 
 #define GL( name, return, args) typedef return GLproc_##name args; extern GLproc_##name* name;

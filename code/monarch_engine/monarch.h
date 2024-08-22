@@ -37,6 +37,11 @@
       *(int*)0 = 0;\
     }\
   } while(0)
+
+
+#define MIN(x, y) ((x) > (y) ? (y) : (x))
+#define MAX(x, y) ((x) < (y) ? (y) : (x))
+
 /*
  * =======================================================
  *						TYPES
@@ -133,6 +138,8 @@ union mat4x4
 
 MOE_API mat4x4 m4_make_orthographic_projection(f32 left, f32 right, f32 bottom, f32 top, f32 _near, f32 _far);
 MOE_API mat4x4 m4_scalar(f32 scalar);
+MOE_API mat4x4 m4_make_scale(vec3 scale);
+MOE_API mat4x4 m4_mul(mat4x4 a, mat4x4 b);
 MOE_API vec2 v2_add(vec2 a, vec2 b);
 MOE_API f32 v2_length(vec2 v);
 MOE_API vec2 v2_mulf(vec2 v, f32 f);
@@ -331,6 +338,25 @@ MOE_API void moe_reset_frame(moe_frame *frame);
 MOE_API void moe_draw_quad(u32 shader, vec2 size, vec2 pos, vec4 color);
 MOE_API void moe_draw_rect(vec2 size, vec2 pos, vec4 color);
 MOE_API void moe_draw_image(u32 texture, vec2 size, vec2 pos);
+
+/*
+ * =======================================================
+ *							FONT
+ * =======================================================
+ */
+
+#define READ_BE16(mem) ((((u8*)(mem))[0] << 8) | (((u8*)(mem))[1]))
+#define READ_BE32(mem) ((((u8*)(mem))[0] << 24) | (((u8*)(mem))[1] << 16) | (((u8*)(mem))[2] << 8) | (((u8*)(mem))[3]))
+#define P_MOVE(mem, a) ((mem) += (a))
+
+#define READ_BE16_MOVE(mem) (READ_BE16((mem))); (P_MOVE((mem), 2))
+#define READ_BE32_MOVE(mem) (READ_BE32((mem))); (P_MOVE((mem), 4))
+
+#define FONT_TAG(a, b, c, d) (a<<24|b<<16|c<<8|d)
+#define GLYF_TAG FONT_TAG('g', 'l', 'y', 'f')
+#define LOCA_TAG FONT_TAG('l', 'o', 'c', 'a')
+#define HEAD_TAG FONT_TAG('h', 'e', 'a', 'd')
+#define CMAP_TAG FONT_TAG('c', 'm', 'a', 'p')
 
 /*
  * =======================================================

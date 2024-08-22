@@ -13,7 +13,7 @@ u32 moe_compile_shader(moe_arena* arena, moe_string vertex_path, moe_string frag
   if(!success)
   {
     glGetShaderInfoLog(vertex_shader, 512, 0, info);
-    ERROR_EXIT("[ERROR] Vertex Shader Commpilation : %s \n", info);
+    log_warn("Vertex Shader Commpilation : %s", info);
   }
 
   u32 fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -24,7 +24,7 @@ u32 moe_compile_shader(moe_arena* arena, moe_string vertex_path, moe_string frag
   if(!success)
   {
     glGetShaderInfoLog(fragment_shader, 512, 0, info);
-    ERROR_EXIT("[ERROR] Fragment Shader Commpilation : %s \n", info);
+    log_warn("Fragment Shader Commpilation : %s", info);
   }
 
   u32 program = glCreateProgram();
@@ -36,7 +36,7 @@ u32 moe_compile_shader(moe_arena* arena, moe_string vertex_path, moe_string frag
   if(!success)
   {
     glGetProgramInfoLog(program, 512, 0, info);
-    ERROR_EXIT("[ERROR] Linking : %s \n", info);
+    log_warn("Linking : %s", info);
   }
 
   arena_dealloc(arena, vertex_src.size);
@@ -44,7 +44,8 @@ u32 moe_compile_shader(moe_arena* arena, moe_string vertex_path, moe_string frag
 
   glDeleteShader(vertex_shader);
   glDeleteShader(fragment_shader);
-
+  
+  log_verbose("Shader %s and %s compilation successful", vertex_path.str, fragment_path.str);
   return program;
 }
 
@@ -107,6 +108,7 @@ void moe_create_renderer(i32 cap){
   draw_frame.renderer = ptr;
 }
 
+// FIXME(krypton): is setting mvp here really necessary?
 void moe_render_flush(moe_renderer* re){
   if(re->vertex_count == 0) return;
 
@@ -119,8 +121,7 @@ void moe_render_flush(moe_renderer* re){
   glBindVertexArray(draw_frame.renderer->vao);
   glDrawArrays(GL_TRIANGLES, 0, draw_frame.renderer->vertex_count);
 
-  u32 loc = glGetUniformLocation(re->shader, "mvp");
-  glUniformMatrix4fv(loc, 1, GL_FALSE, draw_frame.projection.raw[0]);
+  //glUniformMatrix4fv(glGetUniformLocation(re->shader, "mvp"), 1, GL_FALSE, draw_frame.projection.raw[0]);
 
   draw_frame.renderer->vertex_count = 0;
 }
