@@ -17,11 +17,12 @@ static void moe_init_engine() {
 #define TEXTURE_HEIGHT 1024
 #define TEXTURE_FONT_SIZE 200.0f
 
-GLuint fontTexture;
-// Load a TTF file into a texture and return the character data.
-stbtt_packedchar* LoadFont(const char* filename) {
+GLuint fontTexture = 0;
+
+stbtt_packedchar* moe_load_font_data(moe_string font){
+
   // Load TTF file into memory.
-  u8* ttfData = moe_os_read_binary_file(&ctx.arena, str_lit(filename));
+  u8* ttfData = moe_os_read_binary_file(&ctx.arena, font);
   // Pack TTF into pixel data using stb_truetype.
   stbtt_pack_context packContext;
   stbtt_packedchar *charData = (stbtt_packedchar*)arena_alloc(&ctx.arena, 126 * sizeof(stbtt_packedchar));
@@ -34,17 +35,22 @@ stbtt_packedchar* LoadFont(const char* filename) {
   // With 32-125 the uppercase A will be at charData[65-32].
   // The TEXTURE_FONT_SIZE must be a value which can accomodate the generated data inside the texture size
   // else everything will be zero
+  stbtt_PackSetOversampling(&packContext, 1, 1); // reduce padding
   stbtt_PackFontRange(&packContext, (unsigned char*)ttfData, 0, TEXTURE_FONT_SIZE, 0, 125, charData);
   stbtt_PackEnd(&packContext);
 
   //stbi_write_png("Pixel.png", TEXTURE_WIDTH, TEXTURE_HEIGHT, 1, pixels, 0);
   // Create OpenGL texture with the font pack pixel data.
-  // Only uses one color channel since font data is a monochrome alpha mask.
+  // Only uses one color channel since font data is a monochrome alpha mask. 
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
   glGenTextures(1, &fontTexture);
   glBindTexture(GL_TEXTURE_2D, fontTexture);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, TEXTURE_WIDTH, TEXTURE_HEIGHT, 0, GL_RED, GL_UNSIGNED_BYTE, pixels);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 
   // The data is in Pixel format ie., in relation to the actual pixels
   return charData;
@@ -63,10 +69,10 @@ f32 TextWidth(const char* text, f32 height, stbtt_packedchar *charData) {
 }
 
 static void push_vertex(f32 a, f32 b, f32 c, f32 d){
-  moe_push_vertex(draw_frame.renderer, (moe_vertex){.pos=V2(a,b), .tex_coord=V2(c,d), .color=COLOR_RED});
+  moe_push_vertex(draw_frame.renderer, (moe_vertex){.pos=V2(a,b), .tex_coord=V2(c,d), .color=V4(0,0,0,0)});
 }
 
-static void render_text(stbtt_packedchar* char_data, char* str, u32 tex, vec2 pos)
+static void render_text(stbtt_packedchar* char_data, char* str, u32 tex, vec2 pos, u32 shader)
 {
   // aligns to the left
   //pos.x -= TextWidth(str, 200, char_data) / 2.0f;
@@ -87,21 +93,27 @@ static void render_text(stbtt_packedchar* char_data, char* str, u32 tex, vec2 po
     vec4 uv = V4(ch.x0, ch.y0, ch.x1, ch.y1);
 
     moe_texture(draw_frame.renderer, tex);
-    moe_set_matrix_uniform(str_lit("mvp"), IMAGE_SHADER, m4_mul(draw_frame.projection, draw_frame.view));
+    moe_set_matrix_uniform(str_lit("mvp"), shader, m4_mul(draw_frame.projection, draw_frame.view));
 
     f32 u1 = uv.x / TEXTURE_WIDTH;
     f32 v1 = uv.y / TEXTURE_HEIGHT;
     f32 u2 = uv.z / TEXTURE_WIDTH;
     f32 v2 = uv.w / TEXTURE_HEIGHT;
 
-    push_vertex(x1, y1, u1, v1);
-    push_vertex(x2, y2, u2, v2);
-    push_vertex(x1, y2, u1, v2);
+    moe_push_vertex(draw_frame.renderer, (moe_vertex){.pos=V2(x1, y1), .tex_coord=V2(u1, v1), .color=V4(0,0,0,0)});
+    moe_push_vertex(draw_frame.renderer, (moe_vertex){.pos=V2(x2, y2), .tex_coord=V2(u2, v2), .color=V4(0,0,0,0)});
+    moe_push_vertex(draw_frame.renderer, (moe_vertex){.pos=V2(x1, y2), .tex_coord=V2(u1, v2), .color=V4(0,0,0,0)});
+    moe_push_vertex(draw_frame.renderer, (moe_vertex){.pos=V2(x1, y1), .tex_coord=V2(u1, v1), .color=V4(0,0,0,0)});
+    moe_push_vertex(draw_frame.renderer, (moe_vertex){.pos=V2(x2, y1), .tex_coord=V2(u2, v1), .color=V4(0,0,0,0)});
+    moe_push_vertex(draw_frame.renderer, (moe_vertex){.pos=V2(x2, y2), .tex_coord=V2(u2, v2), .color=V4(0,0,0,0)});
+    //  push_vertex(x1, y1, u1, v1);
+    //  push_vertex(x2, y2, u2, v2);
+    //  push_vertex(x1, y2, u1, v2);
 
-    push_vertex(x1, y1, u1, v1);
-    push_vertex(x2, y1, u2, v1);
-    push_vertex(x2, y2, u2, v2);
-  
+    //  push_vertex(x1, y1, u1, v1);
+    //  push_vertex(x2, y1, u2, v1);
+    //  push_vertex(x2, y2, u2, v2);
+
     // FIXME(krypton) : WTF is this 17?
     pos.x += ch.xadvance * scale;
   }
@@ -112,7 +124,7 @@ int main(void)
   moe_init_engine();
   u32 tex = moe_create_texture_from_image(str_lit("player.png"));
   //u32 font = moe_create_texture_from_image(str_lit("Pixel.png"));
-
+  u32 shader = moe_compile_shader(&ctx.arena, str_lit("text.vert"), str_lit("text.frag"));
   f64 last_time = moe_os_time();
   f64 seconds_counter = 0.0;
   i32 frame_count = 0;
@@ -120,10 +132,11 @@ int main(void)
   f32 speed = 1.5f;
   vec2 player_pos = V2(0,0);
   char str[10] = {0};
+
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-  stbtt_packedchar *comic = LoadFont("Jet.ttf");
+  stbtt_packedchar *comic = moe_load_font_data(str_lit("Pixel.ttf"));
   for (;;)
   {
     f64 now = moe_os_time();
@@ -150,12 +163,12 @@ int main(void)
     // render
     {
       moe_draw_image(tex, V2(0.13 * 100, 0.16 * 100), player_pos);
-      //moe_draw_rect(V2(200, 200), V2(200, 100), COLOR_WHITE);
+      moe_draw_rect(V2(200, 200), V2(200, 100), COLOR_WHITE);
     }        
 
     // render piece of tex
     {
-      render_text(comic, str, fontTexture, V2(0, 0));
+      render_text(comic, str, fontTexture, V2(0, 0), shader);
     }
 
     moe_os_swap_buffers(&ctx);
