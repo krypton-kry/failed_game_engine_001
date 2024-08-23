@@ -100,6 +100,7 @@ typedef struct moe_frame moe_frame;
 typedef struct moe_quad moe_quad;
 typedef struct moe_renderer moe_renderer;
 typedef struct moe_vertex moe_vertex;
+typedef struct moe_font moe_font;
 
 /*
  * =======================================================
@@ -309,6 +310,10 @@ MOE_API moe_image moe_load_image(moe_string path); // stbi_image_free this
  * =======================================================
  */
 
+#define TEXTURE_WIDTH 1024
+#define TEXTURE_HEIGHT 1024
+#define TEXTURE_FONT_SIZE 200.0f
+
 struct moe_vertex {
   vec2 pos;
   vec2 tex_coord;
@@ -332,6 +337,11 @@ struct moe_frame {
   moe_renderer* renderer;
 };
 
+struct moe_font {
+ stbtt_packedchar *char_data;
+ u32 texture;
+};
+
 MOE_API void moe_render_update();
 MOE_API void moe_reset_frame(moe_frame *frame);
 
@@ -345,18 +355,8 @@ MOE_API void moe_draw_image(u32 texture, vec2 size, vec2 pos);
  * =======================================================
  */
 
-#define READ_BE16(mem) ((((u8*)(mem))[0] << 8) | (((u8*)(mem))[1]))
-#define READ_BE32(mem) ((((u8*)(mem))[0] << 24) | (((u8*)(mem))[1] << 16) | (((u8*)(mem))[2] << 8) | (((u8*)(mem))[3]))
-#define P_MOVE(mem, a) ((mem) += (a))
-
-#define READ_BE16_MOVE(mem) (READ_BE16((mem))); (P_MOVE((mem), 2))
-#define READ_BE32_MOVE(mem) (READ_BE32((mem))); (P_MOVE((mem), 4))
-
-#define FONT_TAG(a, b, c, d) (a<<24|b<<16|c<<8|d)
-#define GLYF_TAG FONT_TAG('g', 'l', 'y', 'f')
-#define LOCA_TAG FONT_TAG('l', 'o', 'c', 'a')
-#define HEAD_TAG FONT_TAG('h', 'e', 'a', 'd')
-#define CMAP_TAG FONT_TAG('c', 'm', 'a', 'p')
+MOE_API moe_font moe_load_font_data(moe_string font);
+MOE_API void moe_render_text(moe_font *font, char* str, vec2 pos, f32 size);
 
 /*
  * =======================================================
@@ -373,6 +373,8 @@ MOE_API void moe_render_flush(moe_renderer* re);
 MOE_API void moe_create_renderer(i32 cap);
 MOE_API void moe_set_matrix_uniform(moe_string name, u32 shader, mat4x4 m);
 MOE_API void moe_set_viewport(u32 x, u32 y, u32 width, u32 height);
+MOE_API u32 moe_create_font_texture(u8* pixels);
+
 /*
  * =======================================================
  *							api
@@ -394,6 +396,7 @@ global moe_context ctx = {0};
 global moe_frame draw_frame = {0};
 global u32 SHAPE_SHADER = 0;
 global u32 IMAGE_SHADER = 0;
+global u32 TEXT_SHADER = 0;
 
 /*
  * =======================================================

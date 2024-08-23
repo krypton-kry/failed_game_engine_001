@@ -1,3 +1,7 @@
+#define STB_TRUETYPE_IMPLEMENTATION 
+#include "stb_truetype.h"
+
+// because we use stbtt_packedchar
 #include "monarch.h"
 
 #define MOE_WIN32_GL_IMPLEMENTATION
@@ -5,12 +9,6 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
-
-#define STB_TRUETYPE_IMPLEMENTATION 
-#include "stb_truetype.h"
-
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image_write.h"
 
 #include "input.c"
 #include "memory.c"

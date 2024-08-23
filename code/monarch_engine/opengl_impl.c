@@ -44,7 +44,7 @@ u32 moe_compile_shader(moe_arena* arena, moe_string vertex_path, moe_string frag
 
   glDeleteShader(vertex_shader);
   glDeleteShader(fragment_shader);
-  
+
   log_verbose("Shader %s and %s compilation successful", vertex_path.str, fragment_path.str);
   return program;
 }
@@ -52,6 +52,9 @@ u32 moe_compile_shader(moe_arena* arena, moe_string vertex_path, moe_string frag
 void moe_clear_screen(vec4 color){
   glClearColor(color.r, color.g, color.b, color.a);
   glClear(GL_COLOR_BUFFER_BIT);
+
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
 u32 moe_create_texture_from_image(moe_string path){
@@ -150,4 +153,21 @@ void moe_set_matrix_uniform(moe_string name, u32 shader, mat4x4 m){
 
 void moe_set_viewport(u32 x, u32 y, u32 width, u32 height){
   glViewport(x, y, width, height);
+}
+
+u32 moe_create_font_texture(u8* pixels){
+  u32 font_texture = 0;
+  // Create OpenGL texture with the font pack pixel data.
+  // Only uses one color channel since font data is a monochrome alpha mask. 
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+  glGenTextures(1, &font_texture);
+  glBindTexture(GL_TEXTURE_2D, font_texture);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, TEXTURE_WIDTH, TEXTURE_HEIGHT, 0, GL_RED, GL_UNSIGNED_BYTE, pixels);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+
+  return font_texture;
 }
