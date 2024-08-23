@@ -2,6 +2,8 @@ moe_font moe_load_font_data(moe_string font){
 
   // Load TTF file into memory.
   u8* ttf_data = moe_os_read_binary_file(&ctx.arena, font);
+  if( !ttf_data ) ERROR_EXIT("Font %s not found!", font.str);
+
   // Pack TTF into pixel data using stb_truetype.
   stbtt_pack_context pack_context;
   stbtt_packedchar *char_data = (stbtt_packedchar*)arena_alloc(&ctx.arena, 126 * sizeof(stbtt_packedchar));

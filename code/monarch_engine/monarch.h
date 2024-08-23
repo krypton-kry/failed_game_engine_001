@@ -27,7 +27,7 @@
 #define Megabytes(bytes) Kilobytes(bytes) * 1024
 #define Gigabytes(bytes) Megabytes(bytes) * 1024
 
-#define ERROR_EXIT(...) exit((fprintf(stderr, "[ERROR] "__FILE__##", "##": "##__VA_ARGS__), 1))
+#define ERROR_EXIT(...) exit((fprintf(stderr, "[ERROR] "__FILE__##": "##__VA_ARGS__), 1))
 
 #define ASSERT_PRINT(...) fprintf(stderr, "Assert failed on " __VA_ARGS__);
 #define ASSERT(c, ...) \
@@ -211,6 +211,8 @@ MOE_API u8* moe_os_read_binary_file(moe_arena* arena, moe_string filename);
 MOE_API void  moe_os_print(char* fmt, ...);
 MOE_API f64 moe_os_time();
 MOE_LIB moe_input_key moe_os_to_key(void* key);
+MOE_LIB void moe_hide_cursor();
+MOE_LIB moe_bool moe_os_file_exists(moe_string path);
 
 /*
  * =======================================================

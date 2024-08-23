@@ -18,6 +18,18 @@ void moe_os_free_memory(void* memory)
   VirtualFree(memory, 0, MEM_RELEASE);
 }
 
+void moe_hide_cursor(){
+  ShowCursor(0);
+}
+
+moe_bool moe_os_file_exists(moe_string path)
+{
+  DWORD dwAttrib = GetFileAttributes(path.str);
+
+  return (dwAttrib != INVALID_FILE_ATTRIBUTES && 
+         !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
+}
+
 f64 moe_os_time()
 {
   LARGE_INTEGER frequency, counter;
@@ -75,7 +87,7 @@ moe_window_proc(HWND handle, UINT msg, WPARAM wparam, LPARAM lparam)
     case WM_MOUSEMOVE:	
       // For ortho projection from windows
       f32 y = ctx.window.height - (f32) HIWORD(lparam);
-      moe_handle_mouse_motion((f32)LOWORD(lparam), y);
+      moe_handle_mouse_motion((f32)LOWORD(lparam), (f32) HIWORD(lparam));
       break;
     case WM_KEYUP:
     case WM_KEYDOWN:
@@ -265,27 +277,27 @@ moe_string moe_os_read_file(moe_arena* arena, moe_string filename)
 {
   HANDLE file = CreateFileA(filename.str, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
   if (file == INVALID_HANDLE_VALUE) {
-    printf("[WARNING] Failed to open file\n");
+    log_warn("Failed to open file\n");
     return (moe_string){0};
   }
 
   DWORD fileSize = GetFileSize(file, NULL);
   if (fileSize == INVALID_FILE_SIZE) {
-    printf("[WARNING] Failed to get file size\n");
+    log_warn("Failed to get file size\n");
     CloseHandle(file);
     return (moe_string){0};
   }
 
   u8* buffer = arena_alloc_array(arena, u8, fileSize + 1);
   if (!buffer) {
-    printf("[WARNING] Memory allocation failed\n");
+    log_warn("Memory allocation failed\n");
     CloseHandle(file);
     return (moe_string){0};
   }
 
   DWORD bytesRead;
   if (!ReadFile(file, buffer, fileSize, &bytesRead, NULL)) {
-    printf("[WARNING] Failed to read file\n");
+    log_warn("Failed to read file\n");
     arena_dealloc(arena, sizeof(u8) * (fileSize + 1));
     CloseHandle(file);
     return (moe_string){0};
@@ -303,27 +315,27 @@ u8* moe_os_read_binary_file(moe_arena* arena, moe_string filename)
 {
   HANDLE file = CreateFileA(filename.str, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
   if (file == INVALID_HANDLE_VALUE) {
-    printf("[WARNING] Failed to open file\n");
+    log_warn("Failed to open file\n");
     return NULL;
   }
 
   DWORD fileSize = GetFileSize(file, NULL);
   if (fileSize == INVALID_FILE_SIZE) {
-    printf("[WARNING] Failed to get file size\n");
+    log_warn("Failed to get file size\n");
     CloseHandle(file);
     return NULL;
   }
 
   u8* buffer = arena_alloc_array(arena, u8, fileSize);
   if (!buffer) {
-    printf("[WARNING] Memory allocation failed\n");
+    log_warn("Memory allocation failed\n");
     CloseHandle(file);
     return NULL;
   }
 
   DWORD bytesRead;
   if (!ReadFile(file, buffer, fileSize, &bytesRead, NULL)) {
-    printf("[WARNING] Failed to read file\n");
+    log_warn("Failed to read file\n");
     arena_dealloc(arena, sizeof(u8) * fileSize);
     CloseHandle(file);
     return NULL;

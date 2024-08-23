@@ -15,9 +15,10 @@ static void moe_init_engine() {
 int main(void)
 {
   moe_init_engine();
-  
+
   u32 tex = moe_create_texture_from_image(str_lit("player.png"));
-  moe_font font = moe_load_font_data(str_lit("Jet.ttf"));
+  u32 mousetex = moe_create_texture_from_image(str_lit("circle.png"));
+  moe_font font = moe_load_font_data(str_lit("Silkscreen.ttf"));
 
   f64 last_time = moe_os_time();
   f64 seconds_counter = 0.0;
@@ -56,9 +57,15 @@ int main(void)
 
     // render
     {
-      moe_draw_image(tex, V2(0.13 * 100, 0.16 * 100), player_pos);
+      moe_draw_image(tex, V2(0.13 * 400, 0.16 * 400), player_pos);
       moe_draw_rect(V2(200, 200), V2(200, 100), COLOR_WHITE);
       moe_render_text(&font, str, V2(0,0), 30);
+
+      // remove mouse and use somethig as mouse
+      {
+        moe_hide_cursor();
+        moe_draw_image(mousetex, V2(7, 7), ctx.input.mouse.pos);
+      }
     }        
 
     moe_os_swap_buffers(&ctx);
