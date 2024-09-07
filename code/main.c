@@ -40,13 +40,13 @@ int main(void)
     // movement
     vec2 input = V2(0,0);
     if(is_down('W')){
-      input.y -= 100.0f;
+      input.y -= 200.0f;
     } else if(is_down('A')){
-      input.x -= 100.0f;
+      input.x -= 200.0f;
     } else if(is_down('S')){
-      input.y += 100.0f;
+      input.y += 200.0f;
     } else if(is_down('D')){
-      input.x += 100.0f;
+      input.x += 200.0f;
     }
     
     if(is_down(KEY_ESCAPE)){
@@ -57,15 +57,14 @@ int main(void)
 
     // render
     {
-      moe_draw_image(tex, V2(0.13 * 400, 0.16 * 400), player_pos);
-      moe_draw_rect(V2(200, 200), V2(200, 100), COLOR_WHITE);
+      //moe_draw_image(tex, V2(0.13 * 400, 0.16 * 400), player_pos);
+      //moe_draw_rect(V2(200, 200), V2(200, 100), COLOR_RED);
       moe_render_text(&font, str, V2(0,0), 30);
-
       // remove mouse and use somethig as mouse
-      {
-        moe_hide_cursor();
-        moe_draw_image(mousetex, V2(7, 7), ctx.input.mouse.pos);
-      }
+      //{
+      //  moe_hide_cursor();
+      //  moe_draw_image(mousetex, V2(7, 7), ctx.input.mouse.pos);
+      //}
     }        
 
     moe_os_swap_buffers(&ctx);

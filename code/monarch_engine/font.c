@@ -65,4 +65,5 @@ void moe_render_text(moe_font *font, char* str, vec2 pos, f32 size)
 
     pos.x += ch.xadvance * scale;
   }
+  moe_texture(draw_frame.renderer, 0);
 }

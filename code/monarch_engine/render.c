@@ -8,7 +8,7 @@ void moe_render_update(){
 void moe_reset_frame(moe_frame *frame){
   f32 aspect = ctx.window.width / ctx.window.height;
   //frame->projection = m4_make_orthographic_projection(-aspect, aspect, -1, 1, -1, 10);
-  frame->projection = m4_make_orthographic_projection(0, 800, 600, 0, -1, 1);
+  frame->projection = m4_make_orthographic_projection(0, ctx.window.width, ctx.window.height, 0, -1, 1);
   frame->view = m4_scalar(1.0);
 }
 

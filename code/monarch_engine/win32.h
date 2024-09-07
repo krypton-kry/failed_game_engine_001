@@ -67,7 +67,7 @@ moe_window_proc(HWND handle, UINT msg, WPARAM wparam, LPARAM lparam)
     case WM_PAINT:
       PAINTSTRUCT ps;
       HDC hdc = BeginPaint(handle, &ps);
-      FillRect(hdc, &ps.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));
+      //FillRect(hdc, &ps.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));
       EndPaint(handle, &ps);
     case WM_CHAR:
       if( wparam == VK_ESCAPE )

@@ -301,6 +301,7 @@ struct moe_image {
 
 #define COLOR_BLACK V4(0, 0, 0, 1)
 #define COLOR_WHITE V4(1, 1, 1, 1)
+#define COLOR_GREY V4(0.6, 0.6, 0.6, 1)
 #define COLOR_RED V4(1, 0, 0, 1)
 
 MOE_API vec4 hex_to_rgba(u64 hex);
