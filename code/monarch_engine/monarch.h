@@ -42,6 +42,8 @@
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
 #define MAX(x, y) ((x) < (y) ? (y) : (x))
 
+#define STRINGIFY_S(x) #x
+#define STRINGIFY(x) STRINGIFY_S(x)
 /*
  * =======================================================
  *						TYPES
@@ -61,8 +63,7 @@ typedef uint8_t u8;
 typedef float f32;
 typedef double f64;
 
-#define moe_bool i8
-enum {moe_false, moe_true};
+typedef enum { moe_false, moe_true } moe_bool;
 
 /*
  * =======================================================
@@ -286,7 +287,7 @@ MOE_API u8 is_down(moe_input_key key);
 #endif
 
 #define log_warn(fmt, ...) moe_os_print("[WARN] "fmt"\n", __VA_ARGS__)
-
+#define logp(x) puts(STRINGIFY(x)); 
 /*
  * =======================================================
  *						UTILS
