@@ -1,28 +1,6 @@
 #include <dsound.h>
 
-#define log_int(x) log_info("%d", x)
-
-typedef struct WavFile {
-    // RIFF Chunk
-    u32 riff_id;
-    u32 riff_chunk_size;
-    u32 wave_id;
-    
-    // fmt Chunk
-    u32 fmt_id;
-    u32 fmt_chunk_size;
-    u16 format_code;
-    u16 num_channels;
-    u32 sample_rate;
-    u32 byte_rate;
-    u16 block_align;
-    u16 bits_per_sample;
-    
-    // data Chunk
-    u32 data_id;
-    u32 data_chunk_size;
-    u16 samples[]; // actual samples start here
-} WavFile;
+#define log_int(x) log_info(#x " -> %d", x)
 
 LPDIRECTSOUND DirectSoundObj = 0;
 
@@ -70,7 +48,7 @@ void CreateSecondaryBuffer(LPDIRECTSOUNDBUFFER *Buffer, u32 channels, u32 sample
     
     BufferDesc = (DSBUFFERDESC){
         .dwSize = sizeof(DSBUFFERDESC),
-        .dwBufferBytes = WaveFormat.nAvgBytesPerSec * 1, // so we have a 2 sec buffer
+        .dwBufferBytes = sample_rate * sizeof(u16) * channels, // so we have a 1 sec buffer
         .lpwfxFormat = &WaveFormat,
     };
     
@@ -83,76 +61,224 @@ void CreateSecondaryBuffer(LPDIRECTSOUNDBUFFER *Buffer, u32 channels, u32 sample
     // silence the buffer 
     void *region1;
     u32 size1;
+    void *region2;
+    u32 size2;
     
-    if(FAILED(IDirectSoundBuffer_Lock(*Buffer, 0, BufferDesc.dwBufferBytes, &region1, &size1, 0, 0, DSBLOCK_ENTIREBUFFER))) {
+    if(FAILED(IDirectSoundBuffer_Lock(*Buffer, 0, BufferDesc.dwBufferBytes, &region1, &size1, &region2, &size2, DSBLOCK_ENTIREBUFFER))) {
         logp("CreateSoundBuffer -> Locking failed");
         return;
     }
     
     memset(region1, 0, size1);
-    IDirectSoundBuffer_Unlock(*Buffer, region1, size1, 0, 0);
+    memset(region2, 0, size2);
+    
+    IDirectSoundBuffer_Unlock(*Buffer, region1, size1, region2, size2);
 }
-
-void log_wav(WavFile* wav){
-    
-    log_info("riff_id : %d", wav->riff_id);
-    log_info("riff_chunk_size: %d", wav->riff_chunk_size);
-    log_info("wave_id: %d", wav->wave_id);
-    
-    // fmt Chunk
-    log_info("fmt_id: %d", wav->fmt_id);
-    log_info("fmt_chunk_size: %d", wav->fmt_chunk_size);
-    log_info("format_code: %d", wav->format_code);
-    log_info("num_channels: %d", wav->num_channels);
-    log_info("sample_rate: %d", wav->sample_rate);
-    log_info("byte_rate: %d", wav->byte_rate);
-    log_info("block_align: %d", wav->block_align);
-    log_info("bits_per_sample: %d", wav->bits_per_sample);
-    
-    // data Chunk
-    log_info("data_id: %d", wav->data_id);
-    log_info("data_chunk_size: %d", wav->data_chunk_size);
-    
-}
-
-void FillDSBuffer(LPDIRECTSOUNDBUFFER SecondaryBuffer, WavFile *wav, uint16_t* samples)
+#define CUTE_SOUND_TRUNC(X, Y) ((size_t)(X) & ~((Y) - 1))
+#include "wav_importer.h"
+static void cs_dsound_get_bytes_to_fill(LPDIRECTSOUNDBUFFER SecondaryBuffer, u32 size, u32 bps,u32 running_index, int* byte_to_lock, int* bytes_to_write, u32* last_cursor)
 {
-    u32 w_pos, p_pos;
-    IDirectSoundBuffer_GetCurrentPosition(SecondaryBuffer, &p_pos, &w_pos);
+	DWORD play_cursor;
+	DWORD write_cursor;
+	DWORD lock;
+	DWORD target_cursor;
+	DWORD write;
+	DWORD status;
     
-    void *region1, *region2;
-    u32 size1, size2;
+	HRESULT hr = IDirectSoundBuffer_GetCurrentPosition(SecondaryBuffer, &play_cursor, &write_cursor);
+	if (hr != DS_OK) {
+		if (hr == DSERR_BUFFERLOST) {
+			hr = IDirectSoundBuffer_Restore(SecondaryBuffer);
+		}
+		*byte_to_lock = write_cursor;
+		*bytes_to_write = 44100 * bps;
+		if (!SUCCEEDED(hr)) {
+			return;
+		}
+	}
     
-    if(FAILED(IDirectSoundBuffer_Lock(SecondaryBuffer, w_pos, 88200, &region1, &size1, &region2, &size2, 0))) {
-        logp("> Locking failed");
-        return;
-    }
+    *last_cursor = write_cursor;
+	
+    IDirectSoundBuffer_GetStatus(SecondaryBuffer, &status);
+	if (!(status & DSBSTATUS_PLAYING)) {
+		hr = IDirectSoundBuffer_Play(SecondaryBuffer, 0, 0, DSBPLAY_LOOPING);
+		if (!SUCCEEDED(hr)) {
+			return;
+		}
+	}
     
-    u16* sample = (u16*)region1;
+	lock = (running_index * bps) % size;
+	target_cursor = (write_cursor + 44100 * bps);
+	if (target_cursor > (DWORD)size) target_cursor %= size;
+	target_cursor = (DWORD)CUTE_SOUND_TRUNC(target_cursor, 16);
     
-    u32 sample_count = size1 / (wav->bits_per_sample);
-    memcpy(sample, samples, sample_count * sizeof(u16));
-    IDirectSoundBuffer_Unlock(SecondaryBuffer, region1, size1, region2, size2);
+	if (lock > target_cursor) {
+		write = (size - lock) + target_cursor;
+	} else {
+		write = target_cursor - lock;
+	}
+    
+	*byte_to_lock = lock;
+	*bytes_to_write = write;
 }
 
 int main(void){
     arena_init(&ctx.arena);
     moe_os_create_window(800, 600, str_lit("MoeGame"));
     
-    u8* file = moe_os_read_binary_file(&ctx.arena, str_lit("laser1.wav"));
-    WavFile* wav = (WavFile*) file;
-    uint16_t* wavSamples = wav->samples;
     InitDSound(ctx.window.handle);
     
     LPDIRECTSOUNDBUFFER SecondaryBuffer = 0;
-    CreateSecondaryBuffer(&SecondaryBuffer, wav->num_channels, wav->sample_rate, wav->bits_per_sample);
-    u32 status = 0;
+    CreateSecondaryBuffer(&SecondaryBuffer, 2, 44100, 16);
     
-    FillDSBuffer(SecondaryBuffer, wav, wavSamples);
+    u32 status = 0;
+    Loaded_Sound laser = load_wav("test.wav");
+    // so right now what happens is the fill buffer just copies the first second of the wav and it keeps repeating the first second
+    // figure out a way to keep writing to the buffer
+    
+    //aight we are not handling the audio properly
+    u32 running_index = 1;
+    u32 bytes_per_sample = sizeof(u16) * 2;
+    u32 secondary_buffer_size = 44100 * bytes_per_sample;
+    
+    u16* samples = malloc(34953660);
+    memcpy(samples, laser.samples, 34953660);
+    int pos = 0;
     for (;;)
     {
+        
         moe_os_handle_messages();
-        IDirectSoundBuffer_Play(SecondaryBuffer, 0, 0 ,DSBPLAY_LOOPING);
+        u32 play_cursor, write_cursor;
+        if(FAILED(IDirectSoundBuffer_GetCurrentPosition(SecondaryBuffer, &play_cursor, &write_cursor))){
+            logp("Pos failed");
+            return;
+        }
+        /*
+        u32 byte_to_lock = running_index*bytes_per_sample % secondary_buffer_size;
+        u32 bytes_to_write;
+        if(byte_to_lock > play_cursor){
+            bytes_to_write = (secondary_buffer_size - byte_to_lock) + play_cursor;
+        } else {
+            bytes_to_write = play_cursor - byte_to_lock;
+        }
+        */
+        u32 bytes_to_write;
+        u32 byte_to_lock;
+        u32 last_cursor;
+        cs_dsound_get_bytes_to_fill(SecondaryBuffer, secondary_buffer_size, bytes_per_sample, running_index, &byte_to_lock, &bytes_to_write, &last_cursor);
+        
+        /*
+                DWORD safety_bytes = (int)((f32)(44100*bytes_per_sample)*0.166*1);
+                safety_bytes -= safety_bytes % bytes_per_sample;
+                
+                
+                DWORD byte_to_lock = (running_index*bytes_per_sample) % secondary_buffer_size;
+                
+                DWORD expected_bytes_per_tick = (DWORD)((f32)(44100*bytes_per_sample)*0.166);
+                expected_bytes_per_tick -= expected_bytes_per_tick % bytes_per_sample;
+                DWORD expected_boundary_byte = play_cursor + expected_bytes_per_tick;
+                
+                DWORD safe_write_buffer = write_cursor;
+                if (safe_write_buffer < play_cursor) {
+                    safe_write_buffer += secondary_buffer_size;
+                } else {
+                    safe_write_buffer += safety_bytes;
+                }
+                
+                DWORD target_cursor;
+                if (safe_write_buffer < expected_boundary_byte) {
+                    target_cursor = expected_boundary_byte + expected_bytes_per_tick;
+                } else {
+                    target_cursor = write_cursor + expected_bytes_per_tick + safety_bytes;
+                }
+                target_cursor %= secondary_buffer_size;
+                
+                DWORD bytes_to_write;
+                if (byte_to_lock > target_cursor) {
+                    bytes_to_write = secondary_buffer_size - byte_to_lock + target_cursor;
+                } else {
+                    bytes_to_write = target_cursor - byte_to_lock;
+                }*/
+        
+        u32 samples_to_write = bytes_to_write/bytes_per_sample;
+        if(bytes_to_write){
+            VOID* region1;
+            VOID* region2;
+            DWORD size1;
+            DWORD size2;
+            HRESULT hr;
+            hr = IDirectSoundBuffer_Lock(SecondaryBuffer, byte_to_lock, bytes_to_write, &region1, &size1, &region2, &size2, 0);
+            
+            if(hr == DSERR_BUFFERLOST){
+                logp("DSERR_BUFFERLOST");
+            } else if(hr == DSERR_INVALIDCALL){
+                logp("DSERR_INVALIDCALL");
+            } else if(hr == DSERR_INVALIDPARAM){
+                logp("DSERR_INVALIDPARAM");
+            } else if(hr == DSERR_PRIOLEVELNEEDED){
+                logp("DSERR_PRIOLEVELNEEDED");
+            }
+            
+            u16* dest = region1;
+            u16* source = samples;
+            
+            u32 r1_sample_count = size1/bytes_per_sample;
+            memcpy(dest, samples, r1_sample_count * 4);
+            samples += r1_sample_count * 2; 
+            running_index += r1_sample_count;
+            
+            dest = region2;
+            u32 r2_sample_count = size2/bytes_per_sample;
+            memcpy(dest, samples, r2_sample_count * 4);
+            running_index += r2_sample_count;
+            samples += r2_sample_count * 2;
+            DWORD status;
+            DWORD cursor;
+            DWORD junk;
+            
+            hr = IDirectSoundBuffer_GetCurrentPosition(SecondaryBuffer, &junk, &cursor);
+            if (hr != DS_OK) {
+                if (hr == DSERR_BUFFERLOST) {
+                    IDirectSoundBuffer_Restore(SecondaryBuffer);
+                }
+                return;
+            }
+            
+            // Prevent mixing thread from sending samples too quickly.
+            while (cursor == last_cursor) {
+                Sleep(1);
+                IDirectSoundBuffer_GetStatus(SecondaryBuffer, &status);
+                if ((status & DSBSTATUS_BUFFERLOST)) {
+                    IDirectSoundBuffer_Restore(SecondaryBuffer);
+                    IDirectSoundBuffer_GetStatus(SecondaryBuffer, &status);
+                    if ((status & DSBSTATUS_BUFFERLOST)) {
+                        break;
+                    }
+                }
+                
+                hr = IDirectSoundBuffer_GetCurrentPosition(SecondaryBuffer, &junk, &cursor);
+                if (hr != DS_OK) {
+                    // Eek! Not much to do here I guess.
+                    return;
+                }
+            }
+            /*
+            u16* at = samples;
+            
+            for(int i =0;i<samples_to_write;i++){
+                *at++ = laser.samples[pos];
+                *at++ = laser.samples[pos+1];
+                pos +=2;
+                if(pos > laser.sample_count) pos = 0;
+            }*/
+            IDirectSoundBuffer_Unlock(SecondaryBuffer, region1, size1, region2, size2);
+        }
+        
+        IDirectSoundBuffer_GetStatus(SecondaryBuffer, &status);
+        if(!(status & DSBSTATUS_PLAYING)){
+            IDirectSoundBuffer_Play(SecondaryBuffer, 0, 0 ,DSBPLAY_LOOPING);
+        }
+        
         //IDirectSoundBuffer_GetStatus(SecondaryBuffer, &status);
         
         if(is_down(KEY_ESCAPE)){
