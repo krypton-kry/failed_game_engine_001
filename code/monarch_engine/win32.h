@@ -1,5 +1,6 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <dsound.h>
 
 #ifdef MOE_WIN32_GL_IMPLEMENTATION
 
@@ -351,6 +352,75 @@ void  moe_os_print(char* fmt, ...){
     // TODO - Change to actual platform code
     vprintf(fmt, args);
     va_end(args);
+}
+
+typedef HRESULT dsound_create (LPGUID lpGuid, LPDIRECTSOUND* ppDS, LPUNKNOWN pUnkOuter);
+MOE_LIB LPDIRECTSOUNDBUFFER win32_sound_buffer = 0;
+
+void moe_os_init_sound(){
+    
+    HMODULE dsound_dll = LoadLibraryA("dsound.dll");
+    assert(dsound_dll);
+    
+    dsound_create* direct_sound_create = (dsound_create*)GetProcAddress(dsound_dll, "DirectSoundCreate");
+    assert(direct_sound_create);
+    
+    LPDIRECTSOUND direct_sound = 0;
+    
+    if(SUCCEEDED(direct_sound_create(0, &direct_sound, 0))){
+        if(SUCCEEDED(IDirectSound_SetCooperativeLevel(direct_sound, ctx.window.handle, DSSCL_PRIORITY))){
+            
+            LPDIRECTSOUNDBUFFER primary_buffer= 0;
+            DSBUFFERDESC buffer_desc ={0}; 
+            
+            buffer_desc = (DSBUFFERDESC){
+                .dwSize = sizeof(DSBUFFERDESC),
+                .dwFlags = DSBCAPS_PRIMARYBUFFER
+            };
+            
+            if(SUCCEEDED(IDirectSound_CreateSoundBuffer(direct_sound, &buffer_desc, &primary_buffer, 0)))
+            {
+                IDirectSound_Release(primary_buffer);
+            }
+            
+            // Secondary Buffer
+            
+            buffer_desc = (DSBUFFERDESC){0};
+            u8 bits_per_sample = 16;
+            
+            WAVEFORMATEX wav_format = (WAVEFORMATEX){
+                .wFormatTag = WAVE_FORMAT_PCM,
+                .nChannels = ctx.sound.channels,
+                .nSamplesPerSec = ctx.sound.samples_per_second,
+                .wBitsPerSample = bits_per_sample,
+                .nBlockAlign = ctx.sound.channels * (bits_per_sample / 8),
+                .nAvgBytesPerSec = ctx.sound.samples_per_second* (ctx.sound.channels * (bits_per_sample / 8)), // sample_rate * nBlockAlign
+                .cbSize = 0,
+            };
+            
+            buffer_desc = (DSBUFFERDESC){
+                .dwSize = sizeof(DSBUFFERDESC),
+                .dwBufferBytes = ctx.sound.size,
+                .lpwfxFormat = &wav_format,
+            };
+            
+            if(SUCCEEDED(IDirectSound_CreateSoundBuffer(direct_sound, &buffer_desc, &win32_sound_buffer, 0)))
+            {
+                // silence the buffer 
+                void *region1;
+                u32 size1;
+                void *region2;
+                u32 size2;
+                
+                if(SUCCEEDED(IDirectSoundBuffer_Lock(win32_sound_buffer, 0, ctx.sound.size, &region1, &size1, &region2, &size2, DSBLOCK_ENTIREBUFFER))) {
+                    memset(region1, 0, size1);
+                    memset(region2, 0, size2);
+                    IDirectSoundBuffer_Unlock(win32_sound_buffer, region1, size1, region2, size2);
+                    
+                }
+            }
+        }
+    }
 }
 
 #endif /* MOE_WIN32_GL_IMPLEMENTATION  */

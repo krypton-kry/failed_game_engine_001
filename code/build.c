@@ -18,7 +18,9 @@
 #include "utils.c"
 #include "moemath.c"
 #include "font.c"
+#include "audio.c"
 
 //#include "pong.c"
 //#include "main.c"
-#include "sound.c"
+//#include "sound.c"
+#include "ds.c"

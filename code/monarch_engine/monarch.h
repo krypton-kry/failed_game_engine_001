@@ -21,6 +21,7 @@
 #define MOE_LIB static
 #endif
 
+#define internal static inline 
 #define global static
 
 #define Kilobytes(bytes) bytes * 1024
@@ -29,14 +30,14 @@
 
 #define ERROR_EXIT(...) exit((fprintf(stderr, "[ERROR] "__FILE__##": "##__VA_ARGS__), 1))
 
-#define ASSERT_PRINT(...) fprintf(stderr, "Assert failed on " __VA_ARGS__);
+#define ASSERT_PRINT(...) fprintf(stderr, "Assert failed on %s, line %d", __FILE__ __VA_ARGS__, __LINE__);
 #define ASSERT(c, ...) \
-  do {\
-    if( !(c) ){\
-      ASSERT_PRINT(__VA_ARGS__)\
-      *(int*)0 = 0;\
-    }\
-  } while(0)
+do {\
+if( !(c) ){\
+ASSERT_PRINT(__VA_ARGS__)\
+*(int*)0 = 0;\
+}\
+} while(0)
 
 
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
@@ -44,6 +45,11 @@
 
 #define STRINGIFY_S(x) #x
 #define STRINGIFY(x) STRINGIFY_S(x)
+
+#define MOE_TRUNCATE_TO_NEAREST(X, Y) ((size_t)(X) & ~((Y) - 1))
+
+#define ARRAY_COUNT(x) (sizeof(x)/sizeof((x)[0]))
+
 /*
  * =======================================================
  *						TYPES
@@ -103,6 +109,9 @@ typedef struct moe_renderer moe_renderer;
 typedef struct moe_vertex moe_vertex;
 typedef struct moe_font moe_font;
 
+//audio
+typedef struct moe_wav_file moe_wav_file;
+
 /*
  * =======================================================
  *						MATH
@@ -110,28 +119,28 @@ typedef struct moe_font moe_font;
  */
 
 union vec2 {
-  struct { f32 x,y; };
-  f32 raw[2];	
+    struct { f32 x,y; };
+    f32 raw[2];	
 };
 
 union vec3 {
-  struct { f32 x,y,z; };
-  struct { f32 r,b,g; };
-  struct { vec2 xy; };
-  f32 raw[3];
+    struct { f32 x,y,z; };
+    struct { f32 r,b,g; };
+    struct { vec2 xy; };
+    f32 raw[3];
 };
 
 union vec4 {
-  struct { f32 x,y,z,w; };
-  struct { f32 r,b,g,a; };
-  struct { vec2 xy; };
-  f32 raw[4];
+    struct { f32 x,y,z,w; };
+    struct { f32 r,b,g,a; };
+    struct { vec2 xy; };
+    f32 raw[4];
 };
 
 union mat4x4
 {
-  f32 raw[4][4];
-  vec4 columns[4];
+    f32 raw[4][4];
+    vec4 columns[4];
 };
 
 #define V2(x, y) (vec2){x, y}
@@ -155,10 +164,10 @@ MOE_API vec2 v2_normalize(vec2 v);
  */
 //memory
 struct moe_arena {
-  void* memory;
-  u64		commit_position;
-  u64		alloc_position;
-  u64		max;
+    void* memory;
+    u64		commit_position;
+    u64		alloc_position;
+    u64		max;
 };
 
 #define DEFAULT_MAX_ARENA Megabytes(64)
@@ -176,8 +185,8 @@ MOE_API void arena_dealloc(moe_arena* arena, u64 size);
 
 //str 
 struct moe_string {
-  u8* str;
-  u64 size;
+    u8* str;
+    u64 size;
 };
 
 #define str_lit(s) (moe_string){.str = (u8*)s, .size = sizeof(s)-1} 
@@ -193,10 +202,10 @@ MOE_API moe_bool str_find_first(moe_arena* arena, moe_string text, moe_string pa
  */
 
 struct moe_window {
-  void* handle;
-  f32 width;
-  f32 height;
-  moe_string title;
+    void* handle;
+    f32 width;
+    f32 height;
+    moe_string title;
 };
 
 MOE_API moe_window moe_os_create_window(u32 width, u32 height, moe_string title);
@@ -204,13 +213,19 @@ MOE_API void moe_os_destroy_window(moe_window* window);
 MOE_API void moe_os_swap_buffers(moe_context* ctx);
 MOE_API void moe_os_show_window(moe_context* ctx);
 MOE_API void moe_os_handle_messages();
+
 MOE_API void* moe_os_reserve_memory(u64 size);
 MOE_API void moe_os_commit_memory(char* memory, u64 size);
 MOE_API void moe_os_free_memory(void* memory);
+
 MOE_API moe_string moe_os_read_file(moe_arena* arena, moe_string filename);
 MOE_API u8* moe_os_read_binary_file(moe_arena* arena, moe_string filename);
+
 MOE_API void  moe_os_print(char* fmt, ...);
 MOE_API f64 moe_os_time();
+
+MOE_API void moe_os_init_sound();
+
 MOE_LIB moe_input_key moe_os_to_key(void* key);
 MOE_LIB void moe_hide_cursor();
 MOE_LIB moe_bool moe_os_file_exists(moe_string path);
@@ -222,50 +237,50 @@ MOE_LIB moe_bool moe_os_file_exists(moe_string path);
  */
 
 struct moe_mouse {
-  vec2 pos; // position of the mouse in relation to the window
-            // left bottom is (0, 0) and right top is (w, h) of window
+    vec2 pos; // position of the mouse in relation to the window
+    // left bottom is (0, 0) and right top is (w, h) of window
 };
 
 struct moe_key {
-  u8 is_down;
-  u8 changed;
+    u8 is_down;
+    u8 changed;
 };
 
 // TODO Add a WINDOW_RESIZE event if needed
 // TODO Add Scroll event
 enum moe_input_event {
-  INPUT_EVENT_KEY,
-  INPUT_EVENT_MOUSE,
+    INPUT_EVENT_KEY,
+    INPUT_EVENT_MOUSE,
 };
 
 // TODO Add extra keys if needed
 // https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
 enum moe_input_key {
-  KEY_NIL = 0,
-  
-  KEY_TAB = 9,
-  KEY_ENTER = 13,
-  
-  KEY_ESCAPE  = 27,
-  KEY_SPACEBAR  = 32,
-  
-  KEY_LEFT = 37,
-  KEY_UP = 38,
-  KEY_RIGHT = 39,
-  KEY_DOWN = 40,
-  
-  // A - Z, a-z 65-122
-  
-  KEY_MOUSE_LEFT = 130,
-  KEY_MOUSE_MIDDLE = 131,
-  KEY_MOUSE_RIGHT = 132,
-
-  KEY_MAX // we dont set MAX here!
+    KEY_NIL = 0,
+    
+    KEY_TAB = 9,
+    KEY_ENTER = 13,
+    
+    KEY_ESCAPE  = 27,
+    KEY_SPACEBAR  = 32,
+    
+    KEY_LEFT = 37,
+    KEY_UP = 38,
+    KEY_RIGHT = 39,
+    KEY_DOWN = 40,
+    
+    // A - Z, a-z 65-122
+    
+    KEY_MOUSE_LEFT = 130,
+    KEY_MOUSE_MIDDLE = 131,
+    KEY_MOUSE_RIGHT = 132,
+    
+    KEY_MAX // we dont set MAX here!
 };
 
 struct moe_input {
-  moe_mouse mouse;
-  moe_key keys[KEY_MAX];
+    moe_mouse mouse;
+    moe_key keys[KEY_MAX];
 };
 
 // TODO can be merged into a single function if all needed events are added
@@ -287,17 +302,20 @@ MOE_API u8 is_down(moe_input_key key);
 #endif
 
 #define log_warn(fmt, ...) moe_os_print("[WARN] "fmt"\n", __VA_ARGS__)
-#define logp(x) puts(STRINGIFY(x)); 
+
+#define logp(x) puts(STRINGIFY(x));
+#define log_int(x) log_info(#x " -> %d", x)
+
 /*
  * =======================================================
  *						UTILS
  * =======================================================
  */
 struct moe_image {
-  u32 width;
-  u32 height;
-  u32 channels;
-  u8* data;
+    u32 width;
+    u32 height;
+    u32 channels;
+    u8* data;
 };
 
 #define COLOR_BLACK V4(0, 0, 0, 1)
@@ -319,31 +337,31 @@ MOE_API moe_image moe_load_image(moe_string path); // stbi_image_free this
 #define TEXTURE_FONT_SIZE 200.0f
 
 struct moe_vertex {
-  vec2 pos;
-  vec2 tex_coord;
-  vec4 color;
+    vec2 pos;
+    vec2 tex_coord;
+    vec4 color;
 };
 
 struct moe_renderer{ 
-  u32 vao;
-  u32 vbo;
-  u32 shader;
-  u32 texture;
-
-  moe_vertex *vertices;
-  u32 vertex_count;
-  u32 vertex_capacity;
+    u32 vao;
+    u32 vbo;
+    u32 shader;
+    u32 texture;
+    
+    moe_vertex *vertices;
+    u32 vertex_count;
+    u32 vertex_capacity;
 };
 
 struct moe_frame {
-  mat4x4 view;
-  mat4x4 projection;
-  moe_renderer* renderer;
+    mat4x4 view;
+    mat4x4 projection;
+    moe_renderer* renderer;
 };
 
 struct moe_font {
- stbtt_packedchar *char_data;
- u32 texture;
+    stbtt_packedchar *char_data;
+    u32 texture;
 };
 
 MOE_API void moe_render_update();
@@ -362,6 +380,52 @@ MOE_API void moe_draw_image(u32 texture, vec2 size, vec2 pos);
 MOE_API moe_font moe_load_font_data(moe_string font);
 MOE_API void moe_render_text(moe_font *font, char* str, vec2 pos, f32 size);
 
+/*
+ * =======================================================
+ *							AUDIO
+ * =======================================================
+ */
+
+struct moe_wav_file {
+    // RIFF Chunk
+    u32 riff_id;
+    u32 riff_chunk_size;
+    u32 wave_id;
+    
+    // fmt Chunk
+    u32 fmt_id;
+    u32 fmt_chunk_size;
+    u16 format_code;
+    u16 channels;
+    u32 sample_rate;
+    u32 byte_rate;
+    u16 block_align;
+    u16 bits_per_sample;
+    
+    // data Chunk
+    u32 data_id;
+    u32 data_chunk_size;
+    u16 samples[];
+};
+
+typedef struct moe_sound_buffer {
+    u32 channels;
+    u32 samples_per_second;
+    u32 size;
+    u32 bytes_per_sample;
+    u32 last_cursor;
+    u32 running_sample_index;
+    u32 samples_to_write;
+    u16* samples;
+} moe_sound_buffer;
+
+typedef struct moe_sound {
+    u16* samples;
+    u32 sample_count;
+} moe_sound;
+
+//MOE_API moe_sound_info moe_load_wav(moe_arena* arena, moe_string filename);
+MOE_API void moe_init_audio();
 /*
  * =======================================================
  *							OPENGL
@@ -384,10 +448,12 @@ MOE_API u32 moe_create_font_texture(u8* pixels);
  *							api
  * =======================================================
  */
+
 struct moe_context {
-  moe_window window;
-  moe_input input;
-  moe_arena arena;
+    moe_window window;
+    moe_input input;
+    moe_arena arena;
+    moe_sound_buffer sound;
 };
 
 /*
